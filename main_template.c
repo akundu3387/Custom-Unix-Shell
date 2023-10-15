@@ -21,11 +21,12 @@ create a simple linux shell interface to perform basic linux commands
 
 /* 
 DEFINE THE FUNCTION PROTOTYPES
-user_prompt_loop()
-get_user_command()
-parse_command()
-execute_command()
 */
+void user_prompt_loop();
+char* get_user_command();
+char** parse_command(char *command);
+void execute_command(char **parsed_command);
+
 
 int main(int argc, char **argv)
 {
@@ -57,7 +58,7 @@ send it to the execute_command() function. If the user decides to exit, then exi
 with the user given value. 
 */
 
-/*user_prompt_loop()*/
+void user_prompt_loop()
 {
     // initialize variables
 
@@ -109,23 +110,40 @@ with the user given value.
     /*
     ENTER YOUR CODE HERE
     */
-while (1) {
+    char *command;
+    char **parsed_command;
+
+    while (1) {
         printf(">> ");
-        char *command = get_user_command();
-        char **parsed_command = parse_command(command);
+
+        command = get_user_command();
+        parsed_command = parse_command(command);
 
         if (strcmp(parsed_command[0], "exit") == 0) {
-            // exit logic
-            free(command);
-            free(parsed_command);
-            exit(0);
+            if (parsed_command[1] == NULL) {
+                exit(0);
+            } else {
+                char *end;
+                int status = strtol(parsed_command[1], &end, 10);
+                if (*end == '\0') {
+                    exit(status);
+                } else {
+                    fprintf(stderr, "Invalid argument to exit: %s\n", parsed_command[1]);
+                }
+            }
         } else {
+            // Pass to execute_command()
             execute_command(parsed_command);
         }
-        
+
+        // Freeing allocated memory for command and parsed_command
         free(command);
+        for (int i = 0; parsed_command[i]; i++) {
+            free(parsed_command[i]);
+        }
         free(parsed_command);
     }
+
 }
 
 /*
@@ -133,7 +151,7 @@ get_user_command():
 Take input of arbitrary size from the user and return to the user_prompt_loop()
 */
 
-/*get_user_command()*/
+char* get_user_command()
 {
     /*
     Functions you may need: 
@@ -169,7 +187,7 @@ Example:
     parsed output: ["echo", "hello", "world", NULL]
 */
 
-/*parse_command()*/
+char **parse_command(char *command)
 {
     /*
     Functions you may need: 
@@ -178,7 +196,37 @@ Example:
 
     /*
     ENTER YOUR CODE HERE
+    This function will take in the command string as an argument and return an aray of strings
+    where each string is a seperate command or argument. 
+    To implement, I will be using the strtok function
     */
+    int bufsize = 64, position = 0;
+    char **tokens = malloc(bufsize * sizeof(char *));
+    char *token;
+
+    if (!tokens) {
+        fprintf(stderr, "Allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    token = strtok(command, " \t\r\n\a");
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+
+        if (position >= bufsize) {
+            bufsize += 64;
+            tokens = realloc(tokens, bufsize * sizeof(char *));
+            if (!tokens) {
+                fprintf(stderr, "Allocation error\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        token = strtok(NULL, " \t\r\n\a");
+    }
+    tokens[position] = NULL;
+    return tokens;
 }
 
 /*
@@ -187,14 +235,33 @@ Execute the parsed command if the commands are neither /proc nor exit;
 fork a process and execute the parsed command inside the child process
 */
 
-/*execute_command()*/
+void execute_command(char **args)
 {
     /*
-    Functions you may need: 
+    Functions you may need:
         fork(), execvp(), waitpid(), and any other useful function
     */
 
     /*
     ENTER YOUR CODE HERE
     */
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork();
+    if (pid == 0) {
+        // Child process
+        if (execvp(args[0], args) == -1) {
+            perror("Shell");
+        }
+        exit(EXIT_FAILURE);
+    } else if (pid < 0) {
+        // Forking error
+        perror("Shell");
+    } else {
+        // Parent process
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
 }
