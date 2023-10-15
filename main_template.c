@@ -200,33 +200,73 @@ char **parse_command(char *command)
     where each string is a seperate command or argument. 
     To implement, I will be using the strtok function
     */
-    int bufsize = 64, position = 0;
-    char **tokens = malloc(bufsize * sizeof(char *));
-    char *token;
+    int bufferSize = 64; // Initial buffer size for tokens array
+    int position = 0; // Position to insert the next token
+    char **tokens = malloc(bufferSize * sizeof(char*)); // Dynamic array to hold tokens
+    char *input_copy = strdup(input); // Copy of the input to tokenize
+    char temp[1024]; // Temp buffer
 
+    // Check for memory allocation failure
     if (!tokens) {
         fprintf(stderr, "Allocation error\n");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
-    token = strtok(command, " \t\r\n\a");
-    while (token != NULL) {
-        tokens[position] = token;
-        position++;
+    int i = 0, j = 0;
+    int in_single_quote = 0, in_double_quote = 0;
 
-        if (position >= bufsize) {
-            bufsize += 64;
-            tokens = realloc(tokens, bufsize * sizeof(char *));
-            if (!tokens) {
-                fprintf(stderr, "Allocation error\n");
-                exit(EXIT_FAILURE);
+    // Loop through each character of the input string
+    while (input_copy[i] != '\0') {
+        // Toggle single quote flag if a single quote is encountered and not inside double quotes
+        if (input_copy[i] == '\'' && !in_double_quote) {
+            in_single_quote = !in_single_quote;
+        }
+        // Toggle double quote flag if a double quote is encountered and not inside single quotes
+        else if (input_copy[i] == '\"' && !in_single_quote) {
+            in_double_quote = !in_double_quote;
+        }
+        // Identify token boundaries
+        else if ((input_copy[i] == ' ' || input_copy[i] == '\t' || input_copy[i] == '\n') &&
+                 !in_single_quote && !in_double_quote) {
+            if (j != 0) { // Add token to tokens array if temp is not empty
+                temp[j] = '\0'; // Null-terminate
+                tokens[position] = strdup(temp); // Add token to tokens array
+                position++;
+
+                // Resize tokens array if it's full
+                if (position >= bufferSize) {
+                    bufferSize += 64;
+                    tokens = realloc(tokens, bufferSize * sizeof(char*));
+                    if (!tokens) {
+                        fprintf(stderr, "Allocation error\n");
+                        exit(1);
+                    }
+                }
+                j = 0; // Reset temp index
             }
         }
-
-        token = strtok(NULL, " \t\r\n\a");
+        // Handle escape sequences for space, single and double quotes
+        else if (input_copy[i] == '\\' && (input_copy[i + 1] == ' ' || input_copy[i + 1] == '\"' || input_copy[i + 1] == '\'')) {
+            temp[j++] = input_copy[++i]; // Skip the backslash
+        }
+        // Regular character, add to temp
+        else {
+            temp[j++] = input_copy[i];
+        }
+        i++;
     }
+
+    // Catch remaining token
+    if (j != 0) {
+        temp[j] = '\0';
+        tokens[position] = strdup(temp);
+        position++;
+    }
+
     tokens[position] = NULL;
+    free(input_copy); // Free the copied input string
     return tokens;
+
 }
 
 /*
