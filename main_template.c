@@ -117,6 +117,11 @@ void user_prompt_loop()
         printf(">> ");
 
         command = get_user_command();
+	//Check if command is empty or all whitespaces
+	if(command == NULL || count_spaces(command) == strlen(command)){
+	    free(command);
+	    continue;
+	}
         parsed_command = parse_command(command);
 
         if (strcmp(parsed_command[0], "exit") == 0) {
@@ -233,7 +238,7 @@ char **parse_command(char *command)
     tokens[position] = NULL;  // Null-terminate the tokens array
 
     free(unescaped_input);  // Free the unescaped input string
-
+    unescaped_input = NULL;
     return tokens;
 
 
