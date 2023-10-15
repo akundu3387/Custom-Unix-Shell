@@ -1,8 +1,8 @@
 /*
 project: 01
-author: 
-email: 
-student id: 
+author:Arjun Kundu 
+email: akundu2@umbc.edu
+student id: NP70299
 description: a simple linux shell designed to perform basic linux commands
 */
 
@@ -40,6 +40,12 @@ int main(int argc, char **argv)
     /*
     ENTER YOUR CODE HERE
     */
+    if (argc > 1) {
+        fprintf(stderr, "The shell does not accept command line arguments.\n");
+        return 1;
+    }
+    user_prompt_loop();
+    return 0;
 }
 
 /*
@@ -103,6 +109,23 @@ with the user given value.
     /*
     ENTER YOUR CODE HERE
     */
+while (1) {
+        printf(">> ");
+        char *command = get_user_command();
+        char **parsed_command = parse_command(command);
+
+        if (strcmp(parsed_command[0], "exit") == 0) {
+            // exit logic
+            free(command);
+            free(parsed_command);
+            exit(0);
+        } else {
+            execute_command(parsed_command);
+        }
+        
+        free(command);
+        free(parsed_command);
+    }
 }
 
 /*
@@ -120,6 +143,19 @@ Take input of arbitrary size from the user and return to the user_prompt_loop()
     /*
     ENTER YOUR CODE HERE
     */
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    nread = getline(&line, &len, stdin);
+
+    if (nread == -1) {
+        // Handle the error or exit
+        perror("getline");
+        exit(EXIT_FAILURE);
+    }
+
+    return line;
 }
 
 /*
