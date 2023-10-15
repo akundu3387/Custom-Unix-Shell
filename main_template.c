@@ -198,74 +198,44 @@ char **parse_command(char *command)
     ENTER YOUR CODE HERE
     This function will take in the command string as an argument and return an aray of strings
     where each string is a seperate command or argument. 
-    To implement, I will be using the strtok function
+    To implement, I will be using utilizing utils.c, especially the unescaped function
     */
-    int bufferSize = 64; // Initial buffer size for tokens array
-    int position = 0; // Position to insert the next token
-    char **tokens = malloc(bufferSize * sizeof(char*)); // Dynamic array to hold tokens
-    char *input_copy = strdup(input); // Copy of the input to tokenize
-    char temp[1024]; // Temp buffer
+    int bufferSize = 64;  // Initial buffer size for tokens array
+    int position = 0;  // Position to insert the next token
+    char **tokens = malloc(bufferSize * sizeof(char*));  // Dynamic array to hold tokens
+    char *unescaped_input = unescape(command, stderr);  // Unescaped input using utils.c function
+    char *token;  // Individual tokens
 
     // Check for memory allocation failure
-    if (!tokens) {
+    if (!tokens || !unescaped_input) {
         fprintf(stderr, "Allocation error\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    int i = 0, j = 0;
-    int in_single_quote = 0, in_double_quote = 0;
+    // Tokenize the unescaped input string
+    token = strtok(unescaped_input, " \t\r\n\a");
+    while (token != NULL) {
+        tokens[position] = strdup(token);
+        position++;
 
-    // Loop through each character of the input string
-    while (input_copy[i] != '\0') {
-        // Toggle single quote flag if a single quote is encountered and not inside double quotes
-        if (input_copy[i] == '\'' && !in_double_quote) {
-            in_single_quote = !in_single_quote;
-        }
-        // Toggle double quote flag if a double quote is encountered and not inside single quotes
-        else if (input_copy[i] == '\"' && !in_single_quote) {
-            in_double_quote = !in_double_quote;
-        }
-        // Identify token boundaries
-        else if ((input_copy[i] == ' ' || input_copy[i] == '\t' || input_copy[i] == '\n') &&
-                 !in_single_quote && !in_double_quote) {
-            if (j != 0) { // Add token to tokens array if temp is not empty
-                temp[j] = '\0'; // Null-terminate
-                tokens[position] = strdup(temp); // Add token to tokens array
-                position++;
-
-                // Resize tokens array if it's full
-                if (position >= bufferSize) {
-                    bufferSize += 64;
-                    tokens = realloc(tokens, bufferSize * sizeof(char*));
-                    if (!tokens) {
-                        fprintf(stderr, "Allocation error\n");
-                        exit(1);
-                    }
-                }
-                j = 0; // Reset temp index
+        // Resize tokens array if it's full
+        if (position >= bufferSize) {
+            bufferSize += 64;
+            tokens = realloc(tokens, bufferSize * sizeof(char*));
+            if (!tokens) {
+                fprintf(stderr, "Allocation error\n");
+                exit(EXIT_FAILURE);
             }
         }
-        // Handle escape sequences for space, single and double quotes
-        else if (input_copy[i] == '\\' && (input_copy[i + 1] == ' ' || input_copy[i + 1] == '\"' || input_copy[i + 1] == '\'')) {
-            temp[j++] = input_copy[++i]; // Skip the backslash
-        }
-        // Regular character, add to temp
-        else {
-            temp[j++] = input_copy[i];
-        }
-        i++;
+        token = strtok(NULL, " \t\r\n\a");
     }
 
-    // Catch remaining token
-    if (j != 0) {
-        temp[j] = '\0';
-        tokens[position] = strdup(temp);
-        position++;
-    }
+    tokens[position] = NULL;  // Null-terminate the tokens array
 
-    tokens[position] = NULL;
-    free(input_copy); // Free the copied input string
+    free(unescaped_input);  // Free the unescaped input string
+
     return tokens;
+
 
 }
 
