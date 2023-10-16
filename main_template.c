@@ -13,6 +13,7 @@ description: a simple linux shell designed to perform basic linux commands
 #include <sys/wait.h>
 #include <ctype.h>
 #include "utils.h"
+#define MAX_HISTORY 10 //number of commands that will be stored in history file
 
 /*
 In this project, you are going to implement a number of functions to 
@@ -27,6 +28,7 @@ char* get_user_command();
 char** parse_command(char *command);
 void execute_command(char **parsed_command);
 void read_proc_file(char *file_path); //created function to read from /proc filesystem
+void free_history(char **history,int count);
 
 int main(int argc, char **argv)
 {
@@ -41,11 +43,47 @@ int main(int argc, char **argv)
     /*
     ENTER YOUR CODE HERE
     */
+    // Check for command-line arguments
     if (argc > 1) {
         fprintf(stderr, "The shell does not accept command line arguments.\n");
         return 1;
     }
+
+    // Initialize history
+    char *history[MAX_HISTORY];
+    int history_count = 0; // Count of lines read
+
+    // opening/creating .421sh file
+    FILE *history_file;
+    char *home_directory = getenv("HOME");
+    char history_path[1024];
+
+    snprintf(history_path, sizeof(history_path), "%s/.421sh", home_directory);
+    history_file = fopen(history_path, "a+");  // Open for reading and appending
+
+    // Read lines from the history file into the history array
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    while ((nread = getline(&line, &len, history_file)) != -1 && history_count < MAX_HISTORY) {
+        line[strcspn(line, "\n")] = 0;  // Remove trailing newline
+        history[history_count] = strdup(line);
+        history_count++;
+    }
+
+    free(line);
+    rewind(history_file);  // Reset the file pointer to the beginning
+
+    // Start the user prompt loop
     user_prompt_loop();
+
+    // Free the history
+    free_history(history, history_count);
+
+    // Close the history file
+    fclose(history_file);
+
     return 0;
 }
 
@@ -324,3 +362,8 @@ void read_proc_file(char *file_path) {
     }
 }
 
+void free_history(char **history, int count) {
+    for (int i = 0; i < count; i++) {
+        free(history[i]);
+    }
+}
