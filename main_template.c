@@ -26,7 +26,7 @@ void user_prompt_loop();
 char* get_user_command();
 char** parse_command(char *command);
 void execute_command(char **parsed_command);
-
+void read_proc_file(char *file_path); //created function to read from /proc filesystem
 
 int main(int argc, char **argv)
 {
@@ -115,15 +115,16 @@ void user_prompt_loop()
 
     while (1) {
         printf(">> ");
-
+	//Read users command input
         command = get_user_command();
 	//Check if command is empty or all whitespaces
 	if(command == NULL || count_spaces(command) == strlen(command)){
 	    free(command);
 	    continue;
 	}
+	//Call parse_command to read the commands into its components
         parsed_command = parse_command(command);
-
+	//Handle the Exit command
         if (strcmp(parsed_command[0], "exit") == 0) {
             if (parsed_command[1] == NULL) {
                 exit(0);
@@ -136,8 +137,22 @@ void user_prompt_loop()
                     fprintf(stderr, "Invalid argument to exit: %s\n", parsed_command[1]);
                 }
             }
+	}else if (strcmp(parsed_command[0], "/proc") == 0) {
+            //Part2: New code for handling /proc
+            if(parsed_command[1]) {
+                char filepath[256] = "/proc/"; //initilizes filepath for /proc directory
+                strcat(filepath, parsed_command[1]);//add file name to filepath
+                if (parsed_command[2]) {  //handle inputs like "/proc/1/status"
+                    strcat(filepath, "/");
+                    strcat(filepath, parsed_command[2]);
+                }
+                read_proc_file(filepath);//read/display contents of specified /proc file
+            } else {
+                fprintf(stderr, "Invalid '/proc' command usage. Missing file or parameter.\n");
+            }
+
         } else {
-            // Pass to execute_command()
+            //All other commands,  Pass to execute_command()
             execute_command(parsed_command);
         }
 
@@ -280,3 +295,32 @@ void execute_command(char **args)
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 }
+
+/*read_proc_file
+This function serves to read from the /proc filesystem
+Because as per Part 2 requirments:  we dont have parse the information read from the /proc files
+Therefore, this function will simply open the file and dump its contents to stdout
+*/
+
+void read_proc_file(char *file_path) {
+    FILE *fp;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    fp = fopen(file_path, "r");
+    if (fp == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    while ((nread = getline(&line, &len, fp)) != -1) {
+        printf("%s", line);
+    }
+
+    fclose(fp);
+    if (line) {
+        free(line);
+    }
+}
+
